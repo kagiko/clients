@@ -17,6 +17,38 @@ This repository houses all Bitwarden client applications except the [Mobile appl
 
 Please refer to the [Clients section](https://contributing.bitwarden.com/getting-started/clients/) of the [Contributing Documentation](https://contributing.bitwarden.com/) for build instructions, recommended tooling, code style tips, and lots of other great information to get you started.
 
+## Build Stuff
+
+[Bitwarden is no longer free software (HN)](https://news.ycombinator.com/item?id=41893994)
+
+### Set up environment: `.github/workflows/build-desktop.yml#155`
+
+- `sudo apt-get -y install pkg-config libxss-dev libglib2.0-dev libsecret-1-dev rpm musl-dev musl-tools`
+- `sudo chown root:root /home/steven/work/kagiko/clients/node_modules/electron/dist/chrome-sandbox`
+- `sudo chmod 4755 /home/steven/work/kagiko/clients/node_modules/electron/dist/chrome-sandbox`
+
+### Build Native Module: `.github/workflows/build-desktop.yml#185`
+
+- `cd apps/desktop/desktop_native`
+- `rustup target add x86_64-unknown-linux-musl`
+- `export PKG_CONFIG_ALL_STATIC=1` # these are required to compile musl builds on a GNU system
+- `export PKG_CONFIG_ALLOW_CROSS=1`
+- `export TARGET=musl`
+- `node build.js cross-platform`
+
+### Run
+
+- `cd apps/desktop`
+- `npm run electron`
+
+### Ignore all this
+
+- `cd apps/desktop/desktop_native/napi`
+- `RUSTFLAGS="-C target-feature=-crt-static" cargo build --release --target=x86_64-unknown-linux-musl`
+- `cd apps/desktop/desktop_native`
+- `npm run build -- --target x86_64-unknown-linux-musl`
+- `npm run build -- --target desktop-napi-linux-x64-musl` ? nope
+
 ## Related projects:
 
 - [bitwarden/server](https://github.com/bitwarden/server): The core infrastructure backend (API, database, Docker, etc).
