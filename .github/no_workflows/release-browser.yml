@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       release_type:
-        description: 'Release Options'
+        description: "Release Options"
         required: true
-        default: 'Initial Release'
+        default: "Initial Release"
         type: choice
         options:
           - Initial Release
@@ -49,7 +49,6 @@ jobs:
           monorepo: true
           monorepo-project: browser
 
-
   locales-test:
     name: Locales Test
     runs-on: ubuntu-22.04
@@ -83,7 +82,6 @@ jobs:
           fi
         working-directory: apps/browser
 
-
   release:
     name: Create GitHub Release
     runs-on: ubuntu-22.04
@@ -98,11 +96,11 @@ jobs:
           workflow: build-browser.yml
           workflow_conclusion: success
           branch: ${{ github.ref_name }}
-          artifacts: 'browser-source-*.zip,
-                      dist-chrome-*.zip,
-                      dist-opera-*.zip,
-                      dist-firefox-*.zip,
-                      dist-edge-*.zip'
+          artifacts: "browser-source-*.zip,
+            dist-chrome-*.zip,
+            dist-opera-*.zip,
+            dist-firefox-*.zip,
+            dist-edge-*.zip"
 
       - name: Dry Run - Download latest build artifacts
         if: ${{ github.event.inputs.release_type == 'Dry Run' }}
@@ -111,11 +109,11 @@ jobs:
           workflow: build-browser.yml
           workflow_conclusion: success
           branch: main
-          artifacts: 'browser-source-*.zip,
-                      dist-chrome-*.zip,
-                      dist-opera-*.zip,
-                      dist-firefox-*.zip,
-                      dist-edge-*.zip'
+          artifacts: "browser-source-*.zip,
+            dist-chrome-*.zip,
+            dist-opera-*.zip,
+            dist-firefox-*.zip,
+            dist-edge-*.zip"
 
       - name: Rename build artifacts
         env:
@@ -131,11 +129,11 @@ jobs:
         if: ${{ github.event.inputs.release_type != 'Dry Run' }}
         uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5 # v1.14.0
         with:
-          artifacts: 'browser-source-${{ needs.setup.outputs.release-version }}.zip,
-                      dist-chrome-${{ needs.setup.outputs.release-version }}.zip,
-                      dist-opera-${{ needs.setup.outputs.release-version }}.zip,
-                      dist-firefox-${{ needs.setup.outputs.release-version }}.zip,
-                      dist-edge-${{ needs.setup.outputs.release-version }}.zip'
+          artifacts: "browser-source-${{ needs.setup.outputs.release-version }}.zip,
+            dist-chrome-${{ needs.setup.outputs.release-version }}.zip,
+            dist-opera-${{ needs.setup.outputs.release-version }}.zip,
+            dist-firefox-${{ needs.setup.outputs.release-version }}.zip,
+            dist-edge-${{ needs.setup.outputs.release-version }}.zip"
           commit: ${{ github.sha }}
           tag: "browser-v${{ needs.setup.outputs.release-version }}"
           name: "Browser v${{ needs.setup.outputs.release-version }}"

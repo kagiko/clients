@@ -1,23 +1,23 @@
 ---
-name: 'Close stale issues and PRs'
+name: "Close stale issues and PRs"
 on:
   workflow_dispatch:
-  schedule:   # Run once a day at 5.23am (arbitrary but should avoid peak loads on the hour)
-    - cron: '23 5 * * *'
+  schedule: # Run once a day at 5.23am (arbitrary but should avoid peak loads on the hour)
+    - cron: "23 5 * * *"
 
 jobs:
   stale:
-    name: 'Check for stale issues and PRs'
+    name: "Check for stale issues and PRs"
     runs-on: ubuntu-22.04
     steps:
-      - name: 'Run stale action'
+      - name: "Run stale action"
         uses: actions/stale@28ca1036281a5e5922ead5184a1bbf96e5fc984e # v9.0.0
         with:
-          stale-issue-label: 'needs-reply'
-          stale-pr-label: 'needs-changes'
-          days-before-stale: -1   # Do not apply the stale labels automatically, this is a manual process
-          days-before-issue-close: 14   # Close issue if no further activity after X days
-          days-before-pr-close: 21   # Close PR if no further activity after X days
+          stale-issue-label: "needs-reply"
+          stale-pr-label: "needs-changes"
+          days-before-stale: -1 # Do not apply the stale labels automatically, this is a manual process
+          days-before-issue-close: 14 # Close issue if no further activity after X days
+          days-before-pr-close: 21 # Close PR if no further activity after X days
           close-issue-message: |
             We need more information before we can help you with your problem. As we haven’t heard from you recently, this issue will be closed.
 

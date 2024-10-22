@@ -1,79 +1,60 @@
 ---
-name: Build Desktop
+name: Release Desktop Beta
 
 on:
-  pull_request:
-    branches-ignore:
-      - 'l10n_master'
-      - 'cf-pages'
-    paths:
-      - 'apps/desktop/**'
-      - 'libs/**'
-      - '*'
-      - '!*.md'
-      - '!*.txt'
-      - '.github/workflows/build-desktop.yml'
-  push:
-    branches:
-      - 'main'
-      - 'rc'
-      - 'hotfix-rc-desktop'
-    paths:
-      - 'apps/desktop/**'
-      - 'libs/**'
-      - '*'
-      - '!*.md'
-      - '!*.txt'
-      - '.github/workflows/build-desktop.yml'
   workflow_dispatch:
-    inputs: {}
+    inputs:
+      version_number:
+        description: "New Beta Version"
+        required: true
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  electron-verify:
-    name: Verify Electron Version
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-
-      - name: Verify
-        run: |
-          PACKAGE_VERSION=$(jq -r .devDependencies.electron package.json)
-          ELECTRON_BUILDER_VERSION=$(jq -r .electronVersion ./apps/desktop/electron-builder.json)
-
-          if [[ "$PACKAGE_VERSION" == "$ELECTRON_BUILDER_VERSION"  ]]; then
-            echo "Versions matches"
-          else
-            echo "Version missmatch, package.json: $PACKAGE_VERSION, electron-builder.json: $ELECTRON_BUILDER_VERSION"
-            exit 1
-          fi
-
   setup:
     name: Setup
     runs-on: ubuntu-22.04
     outputs:
-      package_version: ${{ steps.retrieve-version.outputs.package_version }}
-      release_channel: ${{ steps.release-channel.outputs.channel }}
+      release-version: ${{ steps.version.outputs.version }}
+      release-channel: ${{ steps.release-channel.outputs.channel }}
+      branch-name: ${{ steps.branch.outputs.branch-name }}
       build_number: ${{ steps.increment-version.outputs.build_number }}
-      rc_branch_exists: ${{ steps.branch-check.outputs.rc_branch_exists }}
-      hotfix_branch_exists: ${{ steps.branch-check.outputs.hotfix_branch_exists }}
       node_version: ${{ steps.retrieve-node-version.outputs.node_version }}
-    defaults:
-      run:
-        working-directory: apps/desktop
     steps:
       - name: Checkout repo
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
 
-      - name: Get Package Version
-        id: retrieve-version
+      - name: Branch check
         run: |
-          PKG_VERSION=$(jq -r .version src/package.json)
-          echo "package_version=$PKG_VERSION" >> $GITHUB_OUTPUT
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]] && [[ "$GITHUB_REF" != "refs/heads/rc" ]] && [[ "$GITHUB_REF" != "refs/heads/hotfix-rc" ]]; then
+            echo "==================================="
+            echo "[!] Can only release from the 'main', 'rc' or 'hotfix-rc' branches"
+            echo "==================================="
+            exit 1
+          fi
+
+      - name: Bump Desktop Version - Root
+        env:
+          VERSION: ${{ github.event.inputs.version_number }}
+        run: npm version --workspace=@bitwarden/desktop ${VERSION}-beta
+
+      - name: Bump Desktop Version - App
+        env:
+          VERSION: ${{ github.event.inputs.version_number }}
+        run: npm version ${VERSION}-beta
+        working-directory: "apps/desktop/src"
+
+      - name: Check Release Version
+        id: version
+        uses: bitwarden/gh-actions/release-version-check@main
+        with:
+          release-type: "Initial Release"
+          project-type: ts
+          file: apps/desktop/src/package.json
+          monorepo: true
+          monorepo-project: desktop
 
       - name: Increment Version
         id: increment-version
@@ -85,7 +66,7 @@ jobs:
       - name: Get Version Channel
         id: release-channel
         run: |
-          case "${{ steps.retrieve-version.outputs.package_version }}" in
+          case "${{ steps.version.outputs.version }}" in
             *"alpha"*)
               echo "channel=alpha" >> $GITHUB_OUTPUT
               echo "[!] We do not yet support 'alpha'"
@@ -99,24 +80,33 @@ jobs:
               ;;
           esac
 
-      - name: Check if special branches exist
-        id: branch-check
+      - name: Setup git config
         run: |
-          if [[ $(git ls-remote --heads origin rc) ]]; then
-            echo "rc_branch_exists=1" >> $GITHUB_OUTPUT
-          else
-            echo "rc_branch_exists=0" >> $GITHUB_OUTPUT
-          fi
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global url."https://".insteadOf ssh://
 
-          if [[ $(git ls-remote --heads origin hotfix-rc-desktop) ]]; then
-            echo "hotfix_branch_exists=1" >> $GITHUB_OUTPUT
-          else
-            echo "hotfix_branch_exists=0" >> $GITHUB_OUTPUT
-          fi
+      - name: Create desktop-beta-release branch
+        id: branch
+        env:
+          VERSION: ${{ github.event.inputs.version_number }}
+        run: |
+          find="."
+          replace="_"
+          ver=${VERSION//$find/$replace}
+          branch_name=desktop-beta-release-$ver-beta
+
+          git switch -c $branch_name
+          git add .
+          git commit -m "Bump desktop version to $VERSION-beta"
+
+          git push -u origin $branch_name
+
+          echo "branch-name=$branch_name" >> $GITHUB_OUTPUT
 
       - name: Get Node Version
         id: retrieve-node-version
-        working-directory: ./
         run: |
           NODE_NVMRC=$(cat .nvmrc)
           NODE_VERSION=${NODE_NVMRC/v/''}
@@ -124,15 +114,10 @@ jobs:
 
   linux:
     name: Linux Build
-    # Note, before updating the ubuntu version of the workflow, ensure the snap base image
-    # is equal or greater than the new version. Otherwise there might be GLIBC version issues.
-    # The snap base for desktop is defined in `apps/desktop/electron-builder.json`
-    # We are currently running on 20.04 until the Ubuntu 24.04 release is available, as moving
-    # to 22.04 now breaks users who are on 20.04 due to mismatched GLIBC versions.
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: setup
     env:
-      _PACKAGE_VERSION: ${{ needs.setup.outputs.package_version }}
+      _PACKAGE_VERSION: ${{ needs.setup.outputs.release-version }}
       _NODE_VERSION: ${{ needs.setup.outputs.node_version }}
       NODE_OPTIONS: --max_old_space_size=4096
     defaults:
@@ -141,18 +126,20 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+          ref: ${{ needs.setup.outputs.branch-name }}
 
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Set up environment
         run: |
           sudo apt-get update
-          sudo apt-get -y install pkg-config libxss-dev libsecret-1-dev rpm musl-dev musl-tools
+          sudo apt-get -y install pkg-config libxss-dev libsecret-1-dev rpm
 
       - name: Set up Snap
         run: sudo snap install snapcraft --classic
@@ -167,28 +154,6 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
         working-directory: ./
-
-      - name: Cache Native Module
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        id: cache
-        with:
-          path: |
-            apps/desktop/desktop_native/napi/*.node
-            apps/desktop/desktop_native/dist/*
-            ${{ env.RUNNER_TEMP }}/.cargo/registry
-            ${{ env.RUNNER_TEMP }}/.cargo/git
-          key: rust-${{ runner.os }}-${{ hashFiles('apps/desktop/desktop_native/**/*') }}
-
-      - name: Build Native Module
-        if: steps.cache.outputs.cache-hit != 'true'
-        working-directory: apps/desktop/desktop_native
-        env:
-          PKG_CONFIG_ALLOW_CROSS: true
-          PKG_CONFIG_ALL_STATIC: true
-          TARGET: musl
-        run: |
-          rustup target add x86_64-unknown-linux-musl
-          node build.js cross-platform
 
       - name: Build application
         run: npm run dist:lin
@@ -231,10 +196,9 @@ jobs:
       - name: Upload auto-update artifact
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
-          name: ${{ needs.setup.outputs.release_channel }}-linux.yml
-          path: apps/desktop/dist/${{ needs.setup.outputs.release_channel }}-linux.yml
+          name: ${{ needs.setup.outputs.release-channel }}-linux.yml
+          path: apps/desktop/dist/${{ needs.setup.outputs.release-channel }}-linux.yml
           if-no-files-found: error
-
 
   windows:
     name: Windows Build
@@ -245,38 +209,33 @@ jobs:
         shell: pwsh
         working-directory: apps/desktop
     env:
-      _PACKAGE_VERSION: ${{ needs.setup.outputs.package_version }}
+      _PACKAGE_VERSION: ${{ needs.setup.outputs.release-version }}
       _NODE_VERSION: ${{ needs.setup.outputs.node_version }}
       NODE_OPTIONS: --max_old_space_size=4096
     steps:
       - name: Checkout repo
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+          ref: ${{ needs.setup.outputs.branch-name }}
 
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Install AST
         run: dotnet tool install --global AzureSignTool --version 4.0.1
 
-      - name: Set up environmentF
+      - name: Set up environment
         run: choco install checksum --no-progress
-
-      - name: Rust
-        shell: pwsh
-        run: |
-          rustup target install i686-pc-windows-msvc
-          rustup target install aarch64-pc-windows-msvc
 
       - name: Print environment
         run: |
           node --version
           npm --version
           choco --version
-          rustup show
 
       - name: Login to Azure
         uses: Azure/login@e15b166166a8746d1a47596803bd8c1b595455cf # v1.6.0
@@ -297,20 +256,6 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
         working-directory: ./
-
-      - name: Cache Native Module
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        id: cache
-        with:
-          path: |
-            apps/desktop/desktop_native/napi/*.node
-            apps/desktop/desktop_native/dist/*
-          key: rust-${{ runner.os }}-${{ hashFiles('apps/desktop/desktop_native/**/*') }}
-
-      - name: Build Native Module
-        if: steps.cache.outputs.cache-hit != 'true'
-        working-directory: apps/desktop/desktop_native
-        run: node build.js cross-platform
 
       - name: Build & Sign (dev)
         env:
@@ -440,17 +385,16 @@ jobs:
       - name: Upload auto-update artifact
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
-          name: ${{ needs.setup.outputs.release_channel }}.yml
-          path: apps/desktop/dist/nsis-web/${{ needs.setup.outputs.release_channel }}.yml
+          name: ${{ needs.setup.outputs.release-channel }}.yml
+          path: apps/desktop/dist/nsis-web/${{ needs.setup.outputs.release-channel }}.yml
           if-no-files-found: error
-
 
   macos-build:
     name: MacOS Build
     runs-on: macos-13
     needs: setup
     env:
-      _PACKAGE_VERSION: ${{ needs.setup.outputs.package_version }}
+      _PACKAGE_VERSION: ${{ needs.setup.outputs.release-version }}
       _NODE_VERSION: ${{ needs.setup.outputs.node_version }}
       NODE_OPTIONS: --max_old_space_size=4096
     defaults:
@@ -459,26 +403,23 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+          ref: ${{ needs.setup.outputs.branch-name }}
 
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Set up Node-gyp
         run: python3 -m pip install setuptools
 
-      - name: Rust
-        shell: pwsh
-        run: rustup target install aarch64-apple-darwin
-
       - name: Print environment
         run: |
           node --version
           npm --version
-          rustup show
           echo "GitHub ref: $GITHUB_REF"
           echo "GitHub event: $GITHUB_EVENT"
 
@@ -495,11 +436,6 @@ jobs:
         with:
           path: apps/browser/dist/Safari
           key: ${{ runner.os }}-${{ github.run_id }}-safari-extension
-
-      - name: Login to Azure
-        uses: Azure/login@e15b166166a8746d1a47596803bd8c1b595455cf # v1.6.0
-        with:
-          creds: ${{ secrets.AZURE_KV_CI_SERVICE_PRINCIPAL }}
 
       - name: Download Provisioning Profiles secrets
         env:
@@ -543,7 +479,6 @@ jobs:
           security default-keychain -s build.keychain
           security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
           security set-keychain-settings -lut 1200 build.keychain
-
           security import "$HOME/certificates/bitwarden-desktop-key.p12" -k build.keychain -P "" \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
 
@@ -577,46 +512,22 @@ jobs:
           $package = Get-Content -Raw -Path electron-builder.json | ConvertFrom-Json
           $package | Add-Member -MemberType NoteProperty -Name buildVersion -Value "$env:BUILD_NUMBER"
           $package | ConvertTo-Json -Depth 32 | Set-Content -Path electron-builder.json
-          "### MacOS build number: $env:BUILD_NUMBER" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
       - name: Install Node dependencies
         run: npm ci
         working-directory: ./
 
-      - name: Cache Native Module
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        id: cache
-        with:
-          path: |
-            apps/desktop/desktop_native/napi/*.node
-            apps/desktop/desktop_native/dist/*
-          key: rust-${{ runner.os }}-${{ hashFiles('apps/desktop/desktop_native/**/*') }}
-
-      - name: Build Native Module
-        if: steps.cache.outputs.cache-hit != 'true'
-        working-directory: apps/desktop/desktop_native
-        run: node build.js cross-platform
-
       - name: Build application (dev)
         run: npm run build
-
-
-  browser-build:
-    name: Browser Build
-    needs: setup
-    uses: ./.github/workflows/build-browser.yml
-    secrets: inherit
-
 
   macos-package-github:
     name: MacOS Package GitHub Release Assets
     runs-on: macos-13
     needs:
-      - browser-build
-      - macos-build
       - setup
+      - macos-build
     env:
-      _PACKAGE_VERSION: ${{ needs.setup.outputs.package_version }}
+      _PACKAGE_VERSION: ${{ needs.setup.outputs.release-version }}
       _NODE_VERSION: ${{ needs.setup.outputs.node_version }}
       NODE_OPTIONS: --max_old_space_size=4096
     defaults:
@@ -625,26 +536,23 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+          ref: ${{ needs.setup.outputs.branch-name }}
 
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Set up Node-gyp
         run: python3 -m pip install setuptools
 
-      - name: Rust
-        shell: pwsh
-        run: rustup target install aarch64-apple-darwin
-
       - name: Print environment
         run: |
           node --version
           npm --version
-          rustup show
           echo "GitHub ref: $GITHUB_REF"
           echo "GitHub event: $GITHUB_EVENT"
 
@@ -743,33 +651,40 @@ jobs:
           $package = Get-Content -Raw -Path electron-builder.json | ConvertFrom-Json
           $package | Add-Member -MemberType NoteProperty -Name buildVersion -Value "$env:BUILD_NUMBER"
           $package | ConvertTo-Json -Depth 32 | Set-Content -Path electron-builder.json
-          Write-Output "### MacOS GitHub build number: $env:BUILD_NUMBER"
 
       - name: Install Node dependencies
         run: npm ci
         working-directory: ./
 
-      - name: Cache Native Module
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        id: cache
-        with:
-          path: |
-            apps/desktop/desktop_native/napi/*.node
-            apps/desktop/desktop_native/dist/*
-          key: rust-${{ runner.os }}-${{ hashFiles('apps/desktop/desktop_native/**/*') }}
-
-      - name: Build Native Module
-        if: steps.cache.outputs.cache-hit != 'true'
-        working-directory: apps/desktop/desktop_native
-        run: node build.js cross-platform
-
       - name: Build
         if: steps.build-cache.outputs.cache-hit != 'true'
         run: npm run build
 
-      - name: Download Browser artifact
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      - name: Download artifact from hotfix-rc
+        if: github.ref == 'refs/heads/hotfix-rc'
+        uses: bitwarden/gh-actions/download-artifacts@main
         with:
+          workflow: build-browser.yml
+          workflow_conclusion: success
+          branch: hotfix-rc
+          path: ${{ github.workspace }}/browser-build-artifacts
+
+      - name: Download artifact from rc
+        if: github.ref == 'refs/heads/rc'
+        uses: bitwarden/gh-actions/download-artifacts@main
+        with:
+          workflow: build-browser.yml
+          workflow_conclusion: success
+          branch: rc
+          path: ${{ github.workspace }}/browser-build-artifacts
+
+      - name: Download artifacts from main
+        if: ${{ github.ref != 'refs/heads/rc' && github.ref != 'refs/heads/hotfix-rc' }}
+        uses: bitwarden/gh-actions/download-artifacts@main
+        with:
+          workflow: build-browser.yml
+          workflow_conclusion: success
+          branch: main
           path: ${{ github.workspace }}/browser-build-artifacts
 
       - name: Unzip Safari artifact
@@ -783,19 +698,10 @@ jobs:
           mkdir PlugIns
           cp -r $GITHUB_WORKSPACE/browser-build-artifacts/Safari/dmg/build/Release/safari.appex PlugIns/safari.appex
 
-      - name: Set up private auth key
-        run: |
-          mkdir ~/private_keys
-          cat << EOF > ~/private_keys/AuthKey_6TV9MKN3GP.p8
-          ${{ secrets.APP_STORE_CONNECT_AUTH_KEY }}
-          EOF
-
       - name: Build application (dist)
         env:
-          APP_STORE_CONNECT_TEAM_ISSUER: ${{ secrets.APP_STORE_CONNECT_TEAM_ISSUER }}
-          APP_STORE_CONNECT_AUTH_KEY: 6TV9MKN3GP
-          APP_STORE_CONNECT_AUTH_KEY_PATH: ~/private_keys/AuthKey_6TV9MKN3GP.p8
-          CSC_FOR_PULL_REQUEST: true
+          APPLE_ID_USERNAME: ${{ secrets.APPLE_ID_USERNAME }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
         run: npm run pack:mac
 
       - name: Upload .zip artifact
@@ -822,20 +728,18 @@ jobs:
       - name: Upload auto-update artifact
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
-          name: ${{ needs.setup.outputs.release_channel }}-mac.yml
-          path: apps/desktop/dist/${{ needs.setup.outputs.release_channel }}-mac.yml
+          name: ${{ needs.setup.outputs.release-channel }}-mac.yml
+          path: apps/desktop/dist/${{ needs.setup.outputs.release-channel }}-mac.yml
           if-no-files-found: error
-
 
   macos-package-mas:
     name: MacOS Package Prod Release Asset
     runs-on: macos-13
     needs:
-      - browser-build
-      - macos-build
       - setup
+      - macos-build
     env:
-      _PACKAGE_VERSION: ${{ needs.setup.outputs.package_version }}
+      _PACKAGE_VERSION: ${{ needs.setup.outputs.release-version }}
       _NODE_VERSION: ${{ needs.setup.outputs.node_version }}
       NODE_OPTIONS: --max_old_space_size=4096
     defaults:
@@ -844,26 +748,23 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+          ref: ${{ needs.setup.outputs.branch-name }}
 
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Set up Node-gyp
         run: python3 -m pip install setuptools
 
-      - name: Rust
-        shell: pwsh
-        run: rustup target install aarch64-apple-darwin
-
       - name: Print environment
         run: |
           node --version
           npm --version
-          rustup show
           echo "GitHub ref: $GITHUB_REF"
           echo "GitHub event: $GITHUB_EVENT"
 
@@ -880,18 +781,6 @@ jobs:
         with:
           path: apps/browser/dist/Safari
           key: ${{ runner.os }}-${{ github.run_id }}-safari-extension
-
-      - name: Login to Azure
-        uses: Azure/login@e15b166166a8746d1a47596803bd8c1b595455cf # v1.6.0
-        with:
-          creds: ${{ secrets.AZURE_KV_CI_SERVICE_PRINCIPAL }}
-
-      - name: Retrieve Slack secret
-        id: retrieve-slack-secret
-        uses: bitwarden/gh-actions/get-keyvault-secrets@main
-        with:
-          keyvault: bitwarden-ci
-          secrets: "slack-bot-token"
 
       - name: Download Provisioning Profiles secrets
         env:
@@ -969,33 +858,40 @@ jobs:
           $package = Get-Content -Raw -Path electron-builder.json | ConvertFrom-Json
           $package | Add-Member -MemberType NoteProperty -Name buildVersion -Value "$env:BUILD_NUMBER"
           $package | ConvertTo-Json -Depth 32 | Set-Content -Path electron-builder.json
-          Write-Output "### MacOS App Store build number: $env:BUILD_NUMBER"
 
       - name: Install Node dependencies
         run: npm ci
         working-directory: ./
 
-      - name: Cache Native Module
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        id: cache
-        with:
-          path: |
-            apps/desktop/desktop_native/napi/*.node
-            apps/desktop/desktop_native/dist/*
-          key: rust-${{ runner.os }}-${{ hashFiles('apps/desktop/desktop_native/**/*') }}
-
-      - name: Build Native Module
-        if: steps.cache.outputs.cache-hit != 'true'
-        working-directory: apps/desktop/desktop_native
-        run: node build.js cross-platform
-
       - name: Build
         if: steps.build-cache.outputs.cache-hit != 'true'
         run: npm run build
 
-      - name: Download Browser artifact
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      - name: Download artifact from hotfix-rc
+        if: github.ref == 'refs/heads/hotfix-rc'
+        uses: bitwarden/gh-actions/download-artifacts@main
         with:
+          workflow: build-browser.yml
+          workflow_conclusion: success
+          branch: hotfix-rc
+          path: ${{ github.workspace }}/browser-build-artifacts
+
+      - name: Download artifact from rc
+        if: github.ref == 'refs/heads/rc'
+        uses: bitwarden/gh-actions/download-artifacts@main
+        with:
+          workflow: build-browser.yml
+          workflow_conclusion: success
+          branch: rc
+          path: ${{ github.workspace }}/browser-build-artifacts
+
+      - name: Download artifact from main
+        if: ${{ github.ref != 'refs/heads/rc' && github.ref != 'refs/heads/hotfix-rc' }}
+        uses: bitwarden/gh-actions/download-artifacts@main
+        with:
+          workflow: build-browser.yml
+          workflow_conclusion: success
+          branch: main
           path: ${{ github.workspace }}/browser-build-artifacts
 
       - name: Unzip Safari artifact
@@ -1009,20 +905,11 @@ jobs:
           mkdir PlugIns
           cp -r $GITHUB_WORKSPACE/browser-build-artifacts/Safari/mas/build/Release/safari.appex PlugIns/safari.appex
 
-      - name: Set up private auth key
-        run: |
-          mkdir ~/private_keys
-          cat << EOF > ~/private_keys/AuthKey_6TV9MKN3GP.p8
-          ${{ secrets.APP_STORE_CONNECT_AUTH_KEY }}
-          EOF
-
       - name: Build application for App Store
-        env:
-          APP_STORE_CONNECT_TEAM_ISSUER: ${{ secrets.APP_STORE_CONNECT_TEAM_ISSUER }}
-          APP_STORE_CONNECT_AUTH_KEY: 6TV9MKN3GP
-          APP_STORE_CONNECT_AUTH_KEY_PATH: ~/private_keys/AuthKey_6TV9MKN3GP.p8
-          CSC_FOR_PULL_REQUEST: true
         run: npm run pack:mac:mas
+        env:
+          APPLE_ID_USERNAME: ${{ secrets.APPLE_ID_USERNAME }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
 
       - name: Upload .pkg artifact
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
@@ -1031,320 +918,104 @@ jobs:
           path: apps/desktop/dist/mas-universal/Bitwarden-${{ env._PACKAGE_VERSION }}-universal.pkg
           if-no-files-found: error
 
-      - name: Deploy to TestFlight
-        id: testflight-deploy
-        if: |
-            (github.ref == 'refs/heads/main'
-            || github.ref == 'refs/heads/rc'
-            || github.ref == 'refs/heads/hotfix-rc-desktop')
-        env:
-          APP_STORE_CONNECT_TEAM_ISSUER: ${{ secrets.APP_STORE_CONNECT_TEAM_ISSUER }}
-          APP_STORE_CONNECT_AUTH_KEY: 6TV9MKN3GP
-        run: |
-          xcrun altool \
-            --upload-app \
-            --type macos \
-            --file "$(find ./dist/mas-universal/Bitwarden*.pkg)" \
-            --apiKey $APP_STORE_CONNECT_AUTH_KEY \
-            --apiIssuer $APP_STORE_CONNECT_TEAM_ISSUER
-
-      - name: Post message to a Slack channel
-        id: slack-message
-        if: |
-            (github.ref == 'refs/heads/main'
-            || github.ref == 'refs/heads/rc'
-            || github.ref == 'refs/heads/hotfix-rc-desktop')
-        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
-        with:
-          channel-id: C074F5UESQ0
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Desktop client v${{ env._PACKAGE_VERSION }} <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|build ${{ env.BUILD_NUMBER }}> success on *${{ github.ref_name }}*"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ steps.retrieve-slack-secret.outputs.slack-bot-token }}
-          BUILD_NUMBER: ${{ needs.setup.outputs.build_number }}
-
-
-  macos-package-dev:
-    name: MacOS Package Dev Release Asset
-    runs-on: macos-13
+  release:
+    name: Release beta channel to S3
+    runs-on: ubuntu-22.04
     needs:
-      - browser-build
-      - macos-build
       - setup
-    env:
-      _PACKAGE_VERSION: ${{ needs.setup.outputs.package_version }}
-      _NODE_VERSION: ${{ needs.setup.outputs.node_version }}
-      NODE_OPTIONS: --max_old_space_size=4096
-    defaults:
-      run:
-        working-directory: apps/desktop
+      - linux
+      - windows
+      - macos-build
+      - macos-package-github
+      - macos-package-mas
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-
-      - name: Set up Node
-        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+      - name: Create GitHub deployment
+        uses: chrnorm/deployment-action@55729fcebec3d284f60f5bcabbd8376437d696b1 # v2.0.7
+        id: deployment
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
-          node-version: ${{ env._NODE_VERSION }}
-
-      - name: Set up Node-gyp
-        run: python3 -m pip install setuptools
-
-      - name: Print environment
-        run: |
-          node --version
-          npm --version
-          echo "GitHub ref: $GITHUB_REF"
-          echo "GitHub event: $GITHUB_EVENT"
-
-      - name: Get Build Cache
-        id: build-cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        with:
-          path: apps/desktop/build
-          key: ${{ runner.os }}-${{ github.run_id }}-build
-
-      - name: Setup Safari Cache
-        id: safari-cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        with:
-          path: apps/browser/dist/Safari
-          key: ${{ runner.os }}-${{ github.run_id }}-safari-extension
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          initial-status: "in_progress"
+          environment: "Desktop - Beta"
+          description: "Deployment ${{ needs.setup.outputs.release-version }} to channel ${{ needs.setup.outputs.release-channel }} from branch ${{ needs.setup.outputs.branch-name }}"
+          task: release
 
       - name: Login to Azure
         uses: Azure/login@e15b166166a8746d1a47596803bd8c1b595455cf # v1.6.0
         with:
           creds: ${{ secrets.AZURE_KV_CI_SERVICE_PRINCIPAL }}
 
-      - name: Download Provisioning Profiles secrets
-        env:
-          ACCOUNT_NAME: bitwardenci
-          CONTAINER_NAME: profiles
-        run: |
-          mkdir -p $HOME/secrets
-
-          az storage blob download --account-name $ACCOUNT_NAME --container-name $CONTAINER_NAME \
-            --name bitwarden_desktop_appstore.provisionprofile \
-            --file $HOME/secrets/bitwarden_desktop_appstore.provisionprofile \
-            --output none
-
-      - name: Get certificates
-        run: |
-          mkdir -p $HOME/certificates
-
-          az keyvault secret show --id https://bitwarden-ci.vault.azure.net/certificates/bitwarden-desktop-key |
-            jq -r .value | base64 -d > $HOME/certificates/bitwarden-desktop-key.p12
-
-          az keyvault secret show --id https://bitwarden-ci.vault.azure.net/certificates/appstore-app-cert |
-            jq -r .value | base64 -d > $HOME/certificates/appstore-app-cert.p12
-
-          az keyvault secret show --id https://bitwarden-ci.vault.azure.net/certificates/appstore-installer-cert |
-            jq -r .value | base64 -d > $HOME/certificates/appstore-installer-cert.p12
-
-          az keyvault secret show --id https://bitwarden-ci.vault.azure.net/certificates/devid-app-cert |
-            jq -r .value | base64 -d > $HOME/certificates/devid-app-cert.p12
-
-          az keyvault secret show --id https://bitwarden-ci.vault.azure.net/certificates/devid-installer-cert |
-            jq -r .value | base64 -d > $HOME/certificates/devid-installer-cert.p12
-
-          az keyvault secret show --id https://bitwarden-ci.vault.azure.net/certificates/macdev-cert |
-            jq -r .value | base64 -d > $HOME/certificates/macdev-cert.p12
-
-      - name: Set up keychain
-        env:
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
-          security set-keychain-settings -lut 1200 build.keychain
-
-          security import "$HOME/certificates/bitwarden-desktop-key.p12" -k build.keychain -P "" \
-            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
-
-          security import "$HOME/certificates/devid-app-cert.p12" -k build.keychain -P "" \
-            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
-
-          security import "$HOME/certificates/devid-installer-cert.p12" -k build.keychain -P "" \
-            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
-
-          security import "$HOME/certificates/appstore-app-cert.p12" -k build.keychain -P "" \
-            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
-
-          security import "$HOME/certificates/appstore-installer-cert.p12" -k build.keychain -P "" \
-            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
-
-          security import "$HOME/certificates/macdev-cert.p12" -k build.keychain -P "" \
-            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productbuild
-
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $KEYCHAIN_PASSWORD build.keychain
-
-      - name: Set up provisioning profiles
-        run: |
-          cp $HOME/secrets/bitwarden_desktop_appstore.provisionprofile \
-            $GITHUB_WORKSPACE/apps/desktop/bitwarden_desktop_appstore.provisionprofile
-
-      - name: Increment version
-        shell: pwsh
-        env:
-          BUILD_NUMBER: ${{ needs.setup.outputs.build_number }}
-        run: |
-          $package = Get-Content -Raw -Path electron-builder.json | ConvertFrom-Json
-          $package | Add-Member -MemberType NoteProperty -Name buildVersion -Value "$env:BUILD_NUMBER"
-          $package | ConvertTo-Json -Depth 32 | Set-Content -Path electron-builder.json
-          Write-Output "### MacOS Dev build number: $env:BUILD_NUMBER"
-
-      - name: Install Node dependencies
-        run: npm ci
-        working-directory: ./
-
-      - name: Cache Native Module
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        id: cache
+      - name: Retrieve secrets
+        id: retrieve-secrets
+        uses: bitwarden/gh-actions/get-keyvault-secrets@main
         with:
-          path: |
-            apps/desktop/desktop_native/napi/*.node
-            apps/desktop/desktop_native/dist/*
-          key: rust-${{ runner.os }}-${{ hashFiles('apps/desktop/desktop_native/**/*') }}
+          keyvault: "bitwarden-ci"
+          secrets: "aws-electron-access-id,
+            aws-electron-access-key,
+            aws-electron-bucket-name"
 
-      - name: Build Native Module
-        if: steps.cache.outputs.cache-hit != 'true'
-        working-directory: apps/desktop/desktop_native
-        run: node build.js cross-platform
-
-      - name: Build
-        if: steps.build-cache.outputs.cache-hit != 'true'
-        run: npm run build
-
-      - name: Download Browser artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          path: ${{ github.workspace }}/browser-build-artifacts
+          path: apps/desktop/artifacts
 
-      - name: Unzip Safari artifact
-        run: |
-          SAFARI_DIR=$(find $GITHUB_WORKSPACE/browser-build-artifacts -name 'dist-safari-*.zip')
-          echo $SAFARI_DIR
-          unzip $SAFARI_DIR/dist-safari.zip -d $GITHUB_WORKSPACE/browser-build-artifacts
-
-      - name: Load Safari extension for App Store
-        run: |
-          mkdir PlugIns
-          cp -r $GITHUB_WORKSPACE/browser-build-artifacts/Safari/masdev/build/Release/safari.appex PlugIns/safari.appex
-
-      - name: Set up private auth key
-        run: |
-          mkdir ~/private_keys
-          cat << EOF > ~/private_keys/AuthKey_6TV9MKN3GP.p8
-          ${{ secrets.APP_STORE_CONNECT_AUTH_KEY }}
-          EOF
-
-      - name: Build dev application for App Store
+      - name: Rename .pkg to .pkg.archive
         env:
-          APP_STORE_CONNECT_TEAM_ISSUER: ${{ secrets.APP_STORE_CONNECT_TEAM_ISSUER }}
-          APP_STORE_CONNECT_AUTH_KEY_PATH: ~/private_keys/AuthKey_6TV9MKN3GP.p8
-        run: npm run pack:mac:masdev
+          PKG_VERSION: ${{ needs.setup.outputs.release-version }}
+        working-directory: apps/desktop/artifacts
+        run: mv Bitwarden-${{ env.PKG_VERSION }}-universal.pkg Bitwarden-${{ env.PKG_VERSION }}-universal.pkg.archive
 
-      - name: Zip masdev asset
+      - name: Publish artifacts to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.retrieve-secrets.outputs.aws-electron-access-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.retrieve-secrets.outputs.aws-electron-access-key }}
+          AWS_DEFAULT_REGION: "us-west-2"
+          AWS_S3_BUCKET_NAME: ${{ steps.retrieve-secrets.outputs.aws-electron-bucket-name }}
+        working-directory: apps/desktop/artifacts
         run: |
-          cd dist/mas-dev-universal
-          zip -r Bitwarden-${{ env._PACKAGE_VERSION }}-masdev-universal.zip Bitwarden.app
+          aws s3 cp ./ $AWS_S3_BUCKET_NAME/desktop/ \
+          --acl "public-read" \
+          --recursive \
+          --quiet
 
-      - name: Upload masdev artifact
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+      - name: Update deployment status to Success
+        if: ${{ success() }}
+        uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          name: Bitwarden-${{ env._PACKAGE_VERSION }}-masdev-universal.zip
-          path: apps/desktop/dist/mas-dev-universal/Bitwarden-${{ env._PACKAGE_VERSION }}-masdev-universal.zip
-          if-no-files-found: error
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "success"
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
 
+      - name: Update deployment status to Failure
+        if: ${{ failure() }}
+        uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "failure"
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
 
-  crowdin-push:
-    name: Crowdin Push
-    if: github.ref == 'refs/heads/main'
-    needs:
-      - linux
-      - windows
-      - macos-package-github
-      - macos-package-mas
+  remove-branch:
+    name: Remove branch
     runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-
-      - name: Login to Azure
-        uses: Azure/login@e15b166166a8746d1a47596803bd8c1b595455cf # v1.6.0
-        with:
-          creds: ${{ secrets.AZURE_KV_CI_SERVICE_PRINCIPAL }}
-
-      - name: Retrieve secrets
-        id: retrieve-secrets
-        uses: bitwarden/gh-actions/get-keyvault-secrets@main
-        with:
-          keyvault: "bitwarden-ci"
-          secrets: "crowdin-api-token"
-
-      - name: Upload Sources
-        uses: crowdin/github-action@30849777a3cba6ee9a09e24e195272b8287a0a5b # v1.20.4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CROWDIN_API_TOKEN: ${{ steps.retrieve-secrets.outputs.crowdin-api-token }}
-          CROWDIN_PROJECT_ID: "299360"
-        with:
-          config: apps/desktop/crowdin.yml
-          crowdin_branch_name: main
-          upload_sources: true
-          upload_translations: false
-
-
-  check-failures:
-    name: Check for failures
     if: always()
-    runs-on: ubuntu-22.04
     needs:
-      - electron-verify
-      - browser-build
       - setup
       - linux
       - windows
       - macos-build
       - macos-package-github
       - macos-package-mas
-      - crowdin-push
+      - release
     steps:
-      - name: Check if any job failed
-        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rc' || github.ref == 'refs/heads/hotfix-rc') && contains(needs.*.result, 'failure')
-        run: exit 1
+      - name: Checkout repo
+        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
 
-      - name: Login to Azure - Prod Subscription
-        uses: Azure/login@e15b166166a8746d1a47596803bd8c1b595455cf # v1.6.0
-        if: failure()
-        with:
-          creds: ${{ secrets.AZURE_KV_CI_SERVICE_PRINCIPAL }}
-
-      - name: Retrieve secrets
-        id: retrieve-secrets
-        if: failure()
-        uses: bitwarden/gh-actions/get-keyvault-secrets@main
-        with:
-          keyvault: "bitwarden-ci"
-          secrets: "devops-alerts-slack-webhook-url"
-
-      - name: Notify Slack on failure
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        if: failure()
+      - name: Setup git config
+        run: |
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global url."https://".insteadOf ssh://
+      - name: Remove branch
         env:
-          SLACK_WEBHOOK_URL: ${{ steps.retrieve-secrets.outputs.devops-alerts-slack-webhook-url }}
-        with:
-          status: ${{ job.status }}
+          BRANCH: ${{ needs.setup.outputs.branch-name }}
+        run: git push origin --delete $BRANCH

@@ -6,31 +6,31 @@ on:
   workflow_dispatch:
     inputs:
       publish_type:
-        description: 'Publish Options'
+        description: "Publish Options"
         required: true
-        default: 'Initial Publish'
+        default: "Initial Publish"
         type: choice
         options:
           - Initial Publish
           - Republish
           - Dry Run
       version:
-        description: 'Version to publish (default: latest desktop release)'
+        description: "Version to publish (default: latest desktop release)"
         required: true
         type: string
         default: latest
       rollout_percentage:
-        description: 'Staged Rollout Percentage'
+        description: "Staged Rollout Percentage"
         required: true
-        default: '10'
+        default: "10"
         type: string
       snap_publish:
-        description: 'Publish to Snap store'
+        description: "Publish to Snap store"
         required: true
         default: true
         type: boolean
       choco_publish:
-        description: 'Publish to Chocolatey store'
+        description: "Publish to Chocolatey store"
         required: true
         default: true
         type: boolean
@@ -98,10 +98,10 @@ jobs:
         uses: chrnorm/deployment-action@55729fcebec3d284f60f5bcabbd8376437d696b1 # v2.0.7
         id: deployment
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          initial-status: 'in_progress'
-          environment: 'Desktop - Production'
-          description: 'Deployment ${{ steps.version.outputs.version }} to channel ${{ steps.release-channel.outputs.channel }} from branch ${{ github.ref_name }}'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          initial-status: "in_progress"
+          environment: "Desktop - Production"
+          description: "Deployment ${{ steps.version.outputs.version }} to channel ${{ steps.release-channel.outputs.channel }} from branch ${{ github.ref_name }}"
           task: release
 
   electron-blob:
@@ -125,7 +125,7 @@ jobs:
           secrets: "aws-electron-access-id,
             aws-electron-access-key,
             aws-electron-bucket-name"
-      
+
       - name: Create artifacts directory
         run: mkdir -p apps/desktop/artifacts
 
@@ -149,7 +149,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ steps.retrieve-secrets.outputs.aws-electron-access-id }}
           AWS_SECRET_ACCESS_KEY: ${{ steps.retrieve-secrets.outputs.aws-electron-access-key }}
-          AWS_DEFAULT_REGION: 'us-west-2'
+          AWS_DEFAULT_REGION: "us-west-2"
           AWS_S3_BUCKET_NAME: ${{ steps.retrieve-secrets.outputs.aws-electron-bucket-name }}
         working-directory: apps/desktop/artifacts
         run: |
@@ -162,16 +162,16 @@ jobs:
         if: ${{ inputs.publish_type != 'Dry Run' && success() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          state: 'success'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "success"
           deployment-id: ${{ needs.setup.outputs.deployment-id }}
 
       - name: Update deployment status to Failure
         if: ${{ inputs.publish_type != 'Dry Run' && failure() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          state: 'failure'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "failure"
           deployment-id: ${{ needs.setup.outputs.deployment-id }}
 
   snap:
@@ -283,14 +283,14 @@ jobs:
         if: ${{ inputs.publish_type != 'Dry Run' && success() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          state: 'success'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "success"
           deployment-id: ${{ needs.setup.outputs.deployment-id }}
 
       - name: Update deployment status to Failure
         if: ${{ inputs.publish_type != 'Dry Run' && failure() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          state: 'failure'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "failure"
           deployment-id: ${{ needs.setup.outputs.deployment-id }}

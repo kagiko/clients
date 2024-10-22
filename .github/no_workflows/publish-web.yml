@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       publish_type:
-        description: 'Publish Options'
+        description: "Publish Options"
         required: true
-        default: 'Initial Release'
+        default: "Initial Release"
         type: choice
         options:
           - Initial Release
@@ -83,11 +83,11 @@ jobs:
         uses: chrnorm/deployment-action@55729fcebec3d284f60f5bcabbd8376437d696b1 # v2.0.7
         id: deployment
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          initial-status: 'in_progress'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          initial-status: "in_progress"
           environment-url: http://vault.bitwarden.com
-          environment: 'Web Vault - US Production Cloud'
-          description: 'Deployment ${{ needs.setup.outputs.release_version }} from branch ${{ github.ref_name }}'
+          environment: "Web Vault - US Production Cloud"
+          description: "Deployment ${{ needs.setup.outputs.release_version }} from branch ${{ github.ref_name }}"
           task: release
 
       - name: Pull branch image
@@ -126,18 +126,18 @@ jobs:
         if: ${{ inputs.publish_type != 'Dry Run' && success() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
+          token: "${{ secrets.GITHUB_TOKEN }}"
           environment-url: http://vault.bitwarden.com
-          state: 'success'
+          state: "success"
           deployment-id: ${{ steps.deployment.outputs.deployment_id }}
 
       - name: Update deployment status to Failure
         if: ${{ inputs.publish_type != 'Dry Run' && failure() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
+          token: "${{ secrets.GITHUB_TOKEN }}"
           environment-url: http://vault.bitwarden.com
-          state: 'failure'
+          state: "failure"
           deployment-id: ${{ steps.deployment.outputs.deployment_id }}
 
       - name: Log out of Docker

@@ -6,31 +6,31 @@ on:
   workflow_dispatch:
     inputs:
       publish_type:
-        description: 'Publish Options'
+        description: "Publish Options"
         required: true
-        default: 'Initial Publish'
+        default: "Initial Publish"
         type: choice
         options:
           - Initial Publish
           - Republish
           - Dry Run
       version:
-        description: 'Version to publish (default: latest cli release)'
+        description: "Version to publish (default: latest cli release)"
         required: true
         type: string
         default: latest
       snap_publish:
-        description: 'Publish to Snap store'
+        description: "Publish to Snap store"
         required: true
         default: true
         type: boolean
       choco_publish:
-        description: 'Publish to Chocolatey store'
+        description: "Publish to Chocolatey store"
         required: true
         default: true
         type: boolean
       npm_publish:
-        description: 'Publish to npm registry'
+        description: "Publish to npm registry"
         required: true
         default: true
         type: boolean
@@ -77,10 +77,10 @@ jobs:
         uses: chrnorm/deployment-action@55729fcebec3d284f60f5bcabbd8376437d696b1 # v2.0.7
         id: deployment
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          initial-status: 'in_progress'
-          environment: 'CLI - Production'
-          description: 'Deployment ${{ steps.version-output.outputs.version }} from branch ${{ github.ref_name }}'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          initial-status: "in_progress"
+          environment: "CLI - Production"
+          description: "Deployment ${{ steps.version-output.outputs.version }} from branch ${{ github.ref_name }}"
           task: release
 
   snap:
@@ -107,7 +107,7 @@ jobs:
           secrets: "snapcraft-store-token"
 
       - name: Install Snap
-        uses: samuelmeuli/action-snapcraft@d33c176a9b784876d966f80fb1b461808edc0641  # v2.1.1
+        uses: samuelmeuli/action-snapcraft@d33c176a9b784876d966f80fb1b461808edc0641 # v2.1.1
 
       - name: Download artifacts
         run: wget https://github.com/bitwarden/clients/releases/download/cli-v${{ env._PKG_VERSION }}/bw_${{ env._PKG_VERSION }}_amd64.snap
@@ -221,14 +221,14 @@ jobs:
         if: ${{ inputs.publish_type != 'Dry Run' && success() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          state: 'success'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "success"
           deployment-id: ${{ needs.setup.outputs.deployment-id }}
 
       - name: Update deployment status to Failure
         if: ${{ inputs.publish_type != 'Dry Run' && failure() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
-          token: '${{ secrets.GITHUB_TOKEN }}'
-          state: 'failure'
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "failure"
           deployment-id: ${{ needs.setup.outputs.deployment-id }}

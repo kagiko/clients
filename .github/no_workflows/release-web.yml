@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       release_type:
-        description: 'Release Options'
+        description: "Release Options"
         required: true
-        default: 'Initial Release'
+        default: "Initial Release"
         type: choice
         options:
           - Initial Release
@@ -88,7 +88,8 @@ jobs:
           commit: ${{ github.sha }}
           tag: web-v${{ needs.setup.outputs.release_version }}
           body: "<insert release notes here>"
-          artifacts: "apps/web/artifacts/web-${{ needs.setup.outputs.release_version }}-selfhosted-COMMERCIAL.zip,
+          artifacts:
+            "apps/web/artifacts/web-${{ needs.setup.outputs.release_version }}-selfhosted-COMMERCIAL.zip,
             apps/web/artifacts/web-${{ needs.setup.outputs.release_version }}-selfhosted-open-source.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: true

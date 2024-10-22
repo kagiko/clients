@@ -4,27 +4,27 @@ name: Build Web
 on:
   pull_request:
     branches-ignore:
-      - 'l10n_master'
-      - 'cf-pages'
+      - "l10n_master"
+      - "cf-pages"
     paths:
-      - 'apps/web/**'
-      - 'libs/**'
-      - '*'
-      - '!*.md'
-      - '!*.txt'
-      - '.github/workflows/build-web.yml'
+      - "apps/web/**"
+      - "libs/**"
+      - "*"
+      - "!*.md"
+      - "!*.txt"
+      - ".github/workflows/build-web.yml"
   push:
     branches:
-      - 'main'
-      - 'rc'
-      - 'hotfix-rc-web'
+      - "main"
+      - "rc"
+      - "hotfix-rc-web"
     paths:
-      - 'apps/web/**'
-      - 'libs/**'
-      - '*'
-      - '!*.md'
-      - '!*.txt'
-      - '.github/workflows/build-web.yml'
+      - "apps/web/**"
+      - "libs/**"
+      - "*"
+      - "!*.md"
+      - "!*.txt"
+      - ".github/workflows/build-web.yml"
   release:
     types: [published]
   workflow_dispatch:
@@ -96,8 +96,8 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Print environment
@@ -135,7 +135,6 @@ jobs:
           name: web-${{ env._VERSION }}-${{ matrix.name }}.zip
           path: apps/web/web-${{ env._VERSION }}-${{ matrix.name }}.zip
           if-no-files-found: error
-
 
   build-containers:
     name: Build Docker images
@@ -246,7 +245,6 @@ jobs:
 
       - name: Log out of Docker
         run: docker logout
-
 
   crowdin-push:
     name: Crowdin Push

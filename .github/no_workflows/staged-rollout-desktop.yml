@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       rollout_percentage:
-        description: 'Staged Rollout Percentage'
+        description: "Staged Rollout Percentage"
         required: true
-        default: '10'
+        default: "10"
         type: string
 
 defaults:
@@ -37,7 +37,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ steps.retrieve-secrets.outputs.aws-electron-access-id }}
           AWS_SECRET_ACCESS_KEY: ${{ steps.retrieve-secrets.outputs.aws-electron-access-key }}
-          AWS_DEFAULT_REGION: 'us-west-2'
+          AWS_DEFAULT_REGION: "us-west-2"
           AWS_S3_BUCKET_NAME: ${{ steps.retrieve-secrets.outputs.aws-electron-bucket-name }}
         run: |
           aws s3 cp $AWS_S3_BUCKET_NAME/desktop/latest.yml . \
@@ -76,7 +76,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ steps.retrieve-secrets.outputs.aws-electron-access-id }}
           AWS_SECRET_ACCESS_KEY: ${{ steps.retrieve-secrets.outputs.aws-electron-access-key }}
-          AWS_DEFAULT_REGION: 'us-west-2'
+          AWS_DEFAULT_REGION: "us-west-2"
           AWS_S3_BUCKET_NAME: ${{ steps.retrieve-secrets.outputs.aws-electron-bucket-name }}
         run: |
           aws s3 cp latest.yml $AWS_S3_BUCKET_NAME/desktop/ \

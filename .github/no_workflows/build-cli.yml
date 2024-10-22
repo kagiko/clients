@@ -4,29 +4,29 @@ name: Build CLI
 on:
   pull_request:
     branches-ignore:
-      - 'l10n_master'
-      - 'cf-pages'
+      - "l10n_master"
+      - "cf-pages"
     paths:
-      - 'apps/cli/**'
-      - 'libs/**'
-      - '*'
-      - '!*.md'
-      - '!*.txt'
-      - '.github/workflows/build-cli.yml'
-      - 'bitwarden_license/bit-cli/**'
+      - "apps/cli/**"
+      - "libs/**"
+      - "*"
+      - "!*.md"
+      - "!*.txt"
+      - ".github/workflows/build-cli.yml"
+      - "bitwarden_license/bit-cli/**"
   push:
     branches:
-      - 'main'
-      - 'rc'
-      - 'hotfix-rc-cli'
+      - "main"
+      - "rc"
+      - "hotfix-rc-cli"
     paths:
-      - 'apps/cli/**'
-      - 'libs/**'
-      - '*'
-      - '!*.md'
-      - '!*.txt'
-      - '.github/workflows/build-cli.yml'
-      - 'bitwarden_license/bit-cli/**'
+      - "apps/cli/**"
+      - "libs/**"
+      - "*"
+      - "!*.md"
+      - "!*.txt"
+      - ".github/workflows/build-cli.yml"
+      - "bitwarden_license/bit-cli/**"
   workflow_dispatch:
     inputs: {}
 
@@ -59,20 +59,15 @@ jobs:
           NODE_VERSION=${NODE_NVMRC/v/''}
           echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
 
-
   cli:
     name: "${{ matrix.os.base }} - ${{ matrix.license_type.readable }}"
     strategy:
       matrix:
-        os:
-          [
-            { base: "linux", distro: "ubuntu-22.04" },
-            { base: "mac", distro: "macos-13" }
-          ]
+        os: [{ base: "linux", distro: "ubuntu-22.04" }, { base: "mac", distro: "macos-13" }]
         license_type:
           [
             { build_prefix: "oss", artifact_prefix: "-oss", readable: "open source license" },
-            { build_prefix: "bit", artifact_prefix: "", readable: "commercial license" }
+            { build_prefix: "bit", artifact_prefix: "", readable: "commercial license" },
           ]
     runs-on: ${{ matrix.os.distro }}
     needs:
@@ -95,8 +90,8 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Install
@@ -150,7 +145,7 @@ jobs:
         license_type:
           [
             { build_prefix: "oss", artifact_prefix: "-oss", readable: "open source license" },
-            { build_prefix: "bit", artifact_prefix: "", readable: "commercial license" }
+            { build_prefix: "bit", artifact_prefix: "", readable: "commercial license" },
           ]
     runs-on: windows-2022
     needs:
@@ -173,8 +168,8 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
           node-version: ${{ env._NODE_VERSION }}
 
       - name: Get pkg-fetch
@@ -220,7 +215,6 @@ jobs:
           "@
           $versionInfo | Out-File ./version-info.rc
       # https://github.com/vercel/pkg-fetch/issues/188
-
       - name: Resource Hacker
         shell: cmd
         run: |
@@ -289,7 +283,7 @@ jobs:
           name: bitwarden-cli.${{ env._PACKAGE_VERSION }}.nupkg
           path: apps/cli/dist/chocolatey/bitwarden-cli.${{ env._PACKAGE_VERSION }}.nupkg
           if-no-files-found: error
-      
+
       - name: Zip NPM Build Artifact
         run: Get-ChildItem -Path .\build | Compress-Archive -DestinationPath .\bitwarden-cli-${{ env._PACKAGE_VERSION }}-npm-build.zip
 
@@ -376,7 +370,6 @@ jobs:
           name: bw-snap-sha256-${{ env._PACKAGE_VERSION }}.txt
           path: apps/cli/dist/snap/bw-snap-sha256-${{ env._PACKAGE_VERSION }}.txt
           if-no-files-found: error
-
 
   check-failures:
     name: Check for failures

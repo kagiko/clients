@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       release_type:
-        description: 'Release Options'
+        description: "Release Options"
         required: true
-        default: 'Initial Release'
+        default: "Initial Release"
         type: choice
         options:
           - Initial Release
@@ -79,21 +79,21 @@ jobs:
           PKG_VERSION: ${{ needs.setup.outputs.release-version }}
         with:
           artifacts: "apps/cli/bw-oss-windows-${{ env.PKG_VERSION }}.zip,
-                      apps/cli/bw-oss-windows-sha256-${{ env.PKG_VERSION }}.txt,
-                      apps/cli/bw-windows-${{ env.PKG_VERSION }}.zip,
-                      apps/cli/bw-windows-sha256-${{ env.PKG_VERSION }}.txt,
-                      apps/cli/bw-oss-macos-${{ env.PKG_VERSION }}.zip,
-                      apps/cli/bw-oss-macos-sha256-${{ env.PKG_VERSION }}.txt,
-                      apps/cli/bw-macos-${{ env.PKG_VERSION }}.zip,
-                      apps/cli/bw-macos-sha256-${{ env.PKG_VERSION }}.txt,
-                      apps/cli/bw-oss-linux-${{ env.PKG_VERSION }}.zip,
-                      apps/cli/bw-oss-linux-sha256-${{ env.PKG_VERSION }}.txt,
-                      apps/cli/bw-linux-${{ env.PKG_VERSION }}.zip,
-                      apps/cli/bw-linux-sha256-${{ env.PKG_VERSION }}.txt,
-                      apps/cli/bitwarden-cli.${{ env.PKG_VERSION }}.nupkg,
-                      apps/cli/bw_${{ env.PKG_VERSION }}_amd64.snap,
-                      apps/cli/bw-snap-sha256-${{ env.PKG_VERSION }}.txt,
-                      apps/cli/bitwarden-cli-${{ env.PKG_VERSION }}-npm-build.zip"
+            apps/cli/bw-oss-windows-sha256-${{ env.PKG_VERSION }}.txt,
+            apps/cli/bw-windows-${{ env.PKG_VERSION }}.zip,
+            apps/cli/bw-windows-sha256-${{ env.PKG_VERSION }}.txt,
+            apps/cli/bw-oss-macos-${{ env.PKG_VERSION }}.zip,
+            apps/cli/bw-oss-macos-sha256-${{ env.PKG_VERSION }}.txt,
+            apps/cli/bw-macos-${{ env.PKG_VERSION }}.zip,
+            apps/cli/bw-macos-sha256-${{ env.PKG_VERSION }}.txt,
+            apps/cli/bw-oss-linux-${{ env.PKG_VERSION }}.zip,
+            apps/cli/bw-oss-linux-sha256-${{ env.PKG_VERSION }}.txt,
+            apps/cli/bw-linux-${{ env.PKG_VERSION }}.zip,
+            apps/cli/bw-linux-sha256-${{ env.PKG_VERSION }}.txt,
+            apps/cli/bitwarden-cli.${{ env.PKG_VERSION }}.nupkg,
+            apps/cli/bw_${{ env.PKG_VERSION }}_amd64.snap,
+            apps/cli/bw-snap-sha256-${{ env.PKG_VERSION }}.txt,
+            apps/cli/bitwarden-cli-${{ env.PKG_VERSION }}-npm-build.zip"
           commit: ${{ github.sha }}
           tag: cli-v${{ env.PKG_VERSION }}
           name: CLI v${{ env.PKG_VERSION }}
