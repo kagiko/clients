@@ -24,8 +24,15 @@ Please refer to the [Clients section](https://contributing.bitwarden.com/getting
 ### Set up environment: `.github/workflows/build-desktop.yml#155`
 
 - `sudo apt-get -y install pkg-config libxss-dev libglib2.0-dev libsecret-1-dev rpm musl-dev musl-tools`
-- `sudo chown root:root /home/steven/work/kagiko/clients/node_modules/electron/dist/chrome-sandbox`
-- `sudo chmod 4755 /home/steven/work/kagiko/clients/node_modules/electron/dist/chrome-sandbox`
+
+### Build Setup:
+
+https://github.com/kagiko/contributing-docs/blob/main/docs/getting-started/clients/index.md
+
+- `cd client` # root
+- `nvm use 20.18.0`
+- `npm ci`
+- `git config blame.ignoreRevsFile .git-blame-ignore-revs`
 
 ### Build Native Module: `.github/workflows/build-desktop.yml#185`
 
@@ -38,6 +45,10 @@ Please refer to the [Clients section](https://contributing.bitwarden.com/getting
 
 ### Run
 
+You may need to run `npm run electron` before chown/chmod on the chrome-sandbox will be available?
+
+- `sudo chown root:root /home/steven/work/kagiko/clients/node_modules/electron/dist/chrome-sandbox`
+- `sudo chmod 4755 /home/steven/work/kagiko/clients/node_modules/electron/dist/chrome-sandbox`
 - `cd apps/desktop`
 - `npm run electron`
 
