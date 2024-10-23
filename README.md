@@ -17,6 +17,12 @@ This repository houses all Bitwarden client applications except the [Mobile appl
 
 Please refer to the [Clients section](https://contributing.bitwarden.com/getting-started/clients/) of the [Contributing Documentation](https://contributing.bitwarden.com/) for build instructions, recommended tooling, code style tips, and lots of other great information to get you started.
 
+## Names
+
+* khema ('secure' in pali, 'camp' in hindi) - .com = $12,000, .org available, github taken
+* arakosh (portmanteau of 'ārakkhā' in pali and '-kosh') - .com, .org, but github taken
+* kitank - .com, .org, but github taken/unused
+
 ## Build Stuff
 
 [Bitwarden is no longer free software (HN)](https://news.ycombinator.com/item?id=41893994)
