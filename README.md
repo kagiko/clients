@@ -22,6 +22,9 @@ Please refer to the [Clients section](https://contributing.bitwarden.com/getting
 * khema ('secure' in pali, 'camp' in hindi) - .com = $12,000, .org available, github taken
 * arakosh (portmanteau of 'ārakkhā' in pali and '-kosh') - .com, .org, but github taken
 * kitank - .com, .org, but github taken/unused
+* ironkosa - .com, .org, github all available
+* irongara - .com, .org, github all available
+* ironkāra (service, work) - .com, .org, github = ok
 
 ## Build Stuff
 
