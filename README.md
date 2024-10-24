@@ -25,6 +25,14 @@ Please refer to the [Clients section](https://contributing.bitwarden.com/getting
 * ironkosa - .com, .org, github all available
 * irongara - .com, .org, github all available
 * ironkāra (service, work) - .com, .org, github = ok
+* ironlena (cave) - .com, .org, github = ok
+* ironseva - .com, .org, github = ok
+* ironsevak - .com, .org, github = ok
+* ironsena - c/o/g
+* irondala (leaf, blade) - c/o/g
+* irondugg (fortress) - c/o/g
+* ironkoka (wolf) - c/o/g
+* keykosa, keykara, keysevak - c/o/g
 
 ## Build Stuff
 
