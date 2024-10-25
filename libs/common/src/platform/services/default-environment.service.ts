@@ -82,6 +82,22 @@ export const USER_CLOUD_REGION_KEY = new UserKeyDefinition<CloudRegion>(
  */
 export const PRODUCTION_REGIONS: RegionConfig[] = [
   {
+    // HACK
+    key: Region.KO,
+    domain: "kagiko.org",
+    urls: {
+      base: null,
+      api: "http://127.0.0.1:8000/api",
+      identity: "http://127.0.0.1:8000/identity",
+      icons: "http://127.0.0.1:8000/icons",
+      webVault: "http://127.0.0.1:8000", // this is the root
+      notifications: "http://127.0.0.1:8000/notifications",
+      events: "http://127.0.0.1:8000/events",
+      scim: "http://127.0.0.1:8000/scim/v2",
+      // TODO: why isn't the 'send' url in here?
+    },
+  },
+  {
     key: Region.US,
     domain: "bitwarden.com",
     urls: {
@@ -114,7 +130,7 @@ export const PRODUCTION_REGIONS: RegionConfig[] = [
 /**
  * The default region when starting the app.
  */
-const DEFAULT_REGION = Region.US;
+const DEFAULT_REGION = Region.KO;
 
 /**
  * The default region configuration.
@@ -332,6 +348,11 @@ abstract class UrlEnvironment implements Environment {
     if (region == Region.SelfHosted) {
       this.urls.scim = null;
     }
+
+    // HACK: we are (for now) behaving as self-hosted, so duplicate the above behaviour
+    if (region == Region.KO) {
+      this.urls.scim = null;
+    }
   }
 
   abstract getHostname(): string;
@@ -441,7 +462,9 @@ export class CloudEnvironment extends UrlEnvironment {
    * Cloud always returns nice urls, i.e. bitwarden.com instead of vault.bitwarden.com.
    */
   getHostname() {
-    return this.config.domain;
+    // HACK
+    return Utils.getHost(this.getWebVaultUrl());
+    // return this.config.domain;
   }
 }
 

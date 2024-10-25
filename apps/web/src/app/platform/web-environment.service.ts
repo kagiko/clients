@@ -50,7 +50,9 @@ export class WebEnvironmentService extends DefaultEnvironmentService {
 
     let environment: Environment;
     if (region) {
-      environment = new WebCloudEnvironment(region, envUrls);
+      // HACK: i think this is right? for now?
+      environment = new SelfHostedEnvironment(envUrls);
+      // environment = new WebCloudEnvironment(region, envUrls);
     } else {
       environment = new SelfHostedEnvironment(envUrls);
     }
@@ -64,6 +66,11 @@ export class WebEnvironmentService extends DefaultEnvironmentService {
   // Web setting env means navigating to a new location
   async setEnvironment(region: Region | string, urls?: Urls): Promise<Urls> {
     if (region === Region.SelfHosted) {
+      throw new Error("setEnvironment does not work in web for self-hosted.");
+    }
+
+    // HACK: as above, for self-hosted
+    if (region === Region.KO) {
       throw new Error("setEnvironment does not work in web for self-hosted.");
     }
 

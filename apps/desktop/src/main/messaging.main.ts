@@ -119,7 +119,7 @@ export class MessagingMain {
       const data = `[Desktop Entry]
 Type=Application
 Version=${app.getVersion()}
-Name=Bitwarden
+Name=Kagiko(startup)
 Comment=Bitwarden startup script
 Exec=${app.getPath("exe")}
 StartupNotify=false

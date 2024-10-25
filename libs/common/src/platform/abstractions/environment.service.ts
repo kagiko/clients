@@ -18,6 +18,7 @@ export type Urls = {
  * A subset of available regions, additional regions can be loaded through configuration.
  */
 export enum Region {
+  KO = "KO",
   US = "US",
   EU = "EU",
   SelfHosted = "Self-hosted",

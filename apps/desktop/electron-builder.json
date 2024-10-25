@@ -2,7 +2,7 @@
   "extraMetadata": {
     "name": "bitwarden"
   },
-  "productName": "Bitwarden",
+  "productName": "Kagiko4",
   "appId": "com.bitwarden.desktop",
   "buildDependenciesFromSource": true,
   "copyright": "Copyright © 2015-2024 Bitwarden Inc.",
@@ -111,7 +111,7 @@
     ],
     "target": ["deb", "freebsd", "rpm", "AppImage", "snap"],
     "desktop": {
-      "Name": "Bitwarden",
+      "Name": "Kagiko",
       "Type": "Application",
       "GenericName": "Password Manager"
     }

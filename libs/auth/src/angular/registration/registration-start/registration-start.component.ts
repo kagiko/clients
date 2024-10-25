@@ -26,7 +26,9 @@ export enum RegistrationStartState {
   CHECK_EMAIL = "CheckEmail",
 }
 
+// HACK: wtf even is this
 const DEFAULT_MARKETING_EMAILS_PREF_BY_REGION: Record<Region, boolean> = {
+  [Region.KO]: false,
   [Region.US]: true,
   [Region.EU]: false,
   [Region.SelfHosted]: false,
