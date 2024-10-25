@@ -7,6 +7,14 @@ This remains in README.md for now
 ## News
 
 * [Bitwarden is no longer free software (HN)](https://news.ycombinator.com/item?id=41893994)
+* [github.com/bitwarden/sdk: License is not FOSS-compatible](https://github.com/bitwarden/sdk/issues/898)
+    * not crawled by archive.org at the time I write this: https://web.archive.org/web/20240000000000*/https://github.com/bitwarden/sdk/issues/898
+* [github.com/bitwarden/clients: 2024.10.0 is no longer free software](https://github.com/bitwarden/clients/issues/11611)
+    * not crawled by archive.org at the time I write this: https://web.archive.org/web/20240000000000*/https://github.com/bitwarden/clients/issues/11611
+    * [Kyle Spearrin on 'sdk-internal' and 'sdk' => 'sdk-secrets'](https://github.com/bitwarden/clients/issues/11611#issuecomment-2436287977)
+    * ['sdk-internal' only non-free for Secrets Manager (PR #10)](https://github.com/bitwarden/sdk-internal/pull/10)
+    * [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/)
+* [What Really Happened to Bitwarden (YouTube)](https://www.youtube.com/watch?v=wPqLBcn7KhE) ... how are there so many comments
 
 ## White Label
 
