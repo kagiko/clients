@@ -14,7 +14,11 @@ This remains in README.md for now
     * [Kyle Spearrin on 'sdk-internal' and 'sdk' => 'sdk-secrets'](https://github.com/bitwarden/clients/issues/11611#issuecomment-2436287977)
     * ['sdk-internal' only non-free for Secrets Manager (PR #10)](https://github.com/bitwarden/sdk-internal/pull/10)
     * [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/)
+    * [Reddit](https://www.reddit.com/r/Bitwarden/comments/1g7uwa2/desktop_version_2024100_is_no_longer_free/)
+    * [Bitwarden Discourse](https://community.bitwarden.com/t/concerns-over-bitwarden-moving-away-from-open-source-what-does-our-future-hold/74800/3)
 * [What Really Happened to Bitwarden (YouTube)](https://www.youtube.com/watch?v=wPqLBcn7KhE) ... how are there so many comments
+* [It's time to leave Bitwarden](https://blog.notesnook.com/its-time-to-leave-bitwarden/)
+* [Phoronix: Concerns Raised Over Bitwarden Moving Further Away From Open-Source](https://www.phoronix.com/news/Bitwarden-Open-Source-Concerns)
 
 ## White Label
 
